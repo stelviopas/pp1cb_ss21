@@ -1,9 +1,8 @@
-
 def readfasta(seq_file, labels_file):
     #seq_file = input('please enter the sequence file path')
     #labels_file = input('please enter the labals file path')
     seq_d = {}
-    with open(seq_file, 'r',newline='') as reader:
+    with open(seq_file, 'r',newline='') as reader: # read seqdata
         seq_num = ''
         for line in reader.readlines():
             line = line.rstrip()
@@ -11,9 +10,9 @@ def readfasta(seq_file, labels_file):
                 seq_num = line[1:]
             else:
                 seq_d[seq_num] = [line]
-        #print(seqnum_d)
+ 
 
-    with open(labels_file, 'r',newline='') as reader:
+    with open(labels_file, 'r',newline='') as reader: # read labels data
         label_num = ''
         for line in reader.readlines():
             line = line.rstrip()
