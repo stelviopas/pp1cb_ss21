@@ -23,7 +23,8 @@ def readfasta(seq_file, labels_file):
                     seq_d[label_num].append(line)
                 else:
                     seq_d[label_num] = ['', line]
-
+    print("Read Done!")
     return seq_d
+
 if __name__ == "__main__":
     merged = readfasta("data\\disorder_seq.fasta","data\\disorder_labels.fasta")
