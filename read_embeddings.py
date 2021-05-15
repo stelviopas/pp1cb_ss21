@@ -1,8 +1,7 @@
+import math
+
 import h5py
 import numpy as np
-import pandas as pd
-import os
-from sklearn.model_selection import StratifiedKFold
 
 
 def read_embeddings(embedding_file):
@@ -91,21 +90,46 @@ def read_data(embedding_path, z_score_path):
     return x, y
 
 
-def split_data(x, y, num_folds=10):
+def split_data(y, num_folds=10):
     """
-    Takes two lists (x = embeddings, y = z-scores) and splits the data into ten folds in a stratified way
-    :param embeddings: embedding dict
-    :param z_scores: z-score dict
+    Takes two lists (x = embeddings, y = z-scores) and splits the data into ten folds.
+    Returns a dictionary where the key is the fold ID (0, 1, 2, ...) and the values are the indices.
+    This method does not stratify folds and does not care about potential class imbalances.
+    Such checks should be added!
+    :param y: z-score list
     :param num_folds: the number of folds into which the data is split, default 10
-    :return: splits which can be used for cross-validation later on
+    :return: dictionary with keys as fold IDs and indices as values
     """
-    # TODO
-    print(f"Splitting data into {num_folds} folds...", end="")
-    # StratifiedKFold(n=10)
-    assert False, "NOT IMPLEMENTED YET"
-    print("done!")
+    print(f"Creating splits...", end="")
+    fold_dict = dict()
+    start_index = 0
+    # if the number of proteins is not evenly divisible by the number of folds, the last samples are distributed
+    # evenly across folds
+    fold_size = math.floor(len(x) / num_folds)
+    for fold in range(num_folds):
+        fold_dict[fold] = list(range(start_index, start_index + fold_size))
+        start_index += fold_size
+
+    # distributing samples which are left over (due to the number of samples not being divisible by the number of folds)
+    # evenly across folds
+    fold = 0
+    while start_index < len(x):
+        fold_dict[fold] += [start_index]
+        start_index += 1
+        fold += 1
+
+    # sanity check that we did not loose any samples while splitting
+    assert sum([len(fold) for fold in fold_dict.values()]) == len(x), "Number of samples after splitting does not " \
+                                                                      "match number of samples before splitting."
+
+    additional_text = "" if len(x) % num_folds == 0 else f" with {len(x) % num_folds} left over samples " \
+                                                         f"being distributed evenly among folds"
+    print(f"done! Created {num_folds} splits of size {fold_size}{additional_text}.")
+
+    # TODO: ensure stratification of folds
+    return fold_dict
 
 
 if __name__ == "__main__":
     x, y = read_data(embedding_path="data/baseline_embeddings_disorder.h5", z_score_path="data/disorder_labels.fasta")
-    split_data(x, y)
+    fold_dict = split_data(x)
