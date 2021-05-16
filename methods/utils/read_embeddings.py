@@ -3,9 +3,6 @@ import math
 import h5py
 import numpy as np
 
-import pandas as pd
-
-
 def read_embeddings(embedding_file):
     """
     Reads in an embedding file in h5 format.
@@ -77,7 +74,7 @@ def read_data(embedding_path, z_score_path):
     to be done once.
     :param embedding_path: path to the embedding file
     :param z_score_path: path to the z_score file
-    :return: pd.DataFrame with two columns:  (x: embeddings, y: z-scores)
+    :return: (x: embeddings, y: z-scores)
     """
     # reading in the two necessary files
     embeddings = read_embeddings(embedding_path)
@@ -88,8 +85,6 @@ def read_data(embedding_path, z_score_path):
 
     # combining the data into a single dataframe
     x, y = match_data(embeddings, z_scores)
-
-   #df = pd.DataFrame([embeddings, z_scores], columns = ['x', 'y'])
 
     return x,y
 
@@ -161,6 +156,6 @@ def split_data(y, num_folds=10):
     return fold_dict
 
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     x, y = read_data(embedding_path="data/baseline_embeddings_disorder.h5", z_score_path="data/disorder_labels.fasta")
-    fold_dict = split_data(x)
+    fold_dict = split_data(x)'''

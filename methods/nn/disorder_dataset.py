@@ -1,41 +1,60 @@
 import os
-import re 
-import pickle 
-import random 
-
+import pandas as pd
 import torch
 from torch.utils.data.dataset import Dataset
 
-from read_embeddings import *
-from read_fasta import *
+from ..utils.read_embeddings import read_data
+
+# TO DO: setup.py
+
+project_root = './../'
+
+# I have specified the default path to a folder named "data" in case 
+# no other folder name was provided but the path rather looks cumbersome... 
+
+def create_dataframe(path=os.path.join(project_root, "data")):
+    
+    z_score_path = 'baseline_embeddings_disorder.h5'
+
+    labels_path = 'disorder_labels.fasta'
+
+    x,y = read_data(os.path.join(path, z_score_path), 
+                    os.path.join(path, labels_path))
+
+    df = pd.DataFrame({'x': x, 'y': y})
+
+    return df
+
 
 
 ###### TO DO #######
 
-''' Wrap up to PyTorch Dataset'''
+''' Wrap up (targets, labels) to PyTorch Dataset.
+The code below is a basic skeleton for convertion of a data formed as a list of tuples to
+a PyTorch dataser. You might need adapt that for further needs. '''
 
 class DisorderDataset(Dataset):
 
-	def __init__(self, data):
+    def __init__(self, data):
 
-		""" 
-		In: 
-			data: list of tuples ()
-		"""
+        """ 
+        In: 
+            data: list of tuples ()
+        """
 
-		self.data = data
+        self.data = data
 
-	def __len__(self):
-		return len(self.data)
+    def __len__(self):
+        return len(self.data)
 
-	def __getitem__(self, i):
+    def __getitem__(self, i):
 
         """
         In:
             i: an integer value to index data
         Outs:
             data: A dictionary of {data, label}
-        """
+            """
         _, _, indices, label = self.data[i]
 
         return {
@@ -43,13 +62,4 @@ class DisorderDataset(Dataset):
             'label': torch.tensor(label).float()
         }
 
- def create_dataframe(path="/home/anastasiaaa/uni/pp1cb_ss21/dataset"):
- 	
- 	z_score_path = 'baseline_embeddings_disorder.h5'
-
- 	labels_path = 'disorder_labels.fasta'
-
- 	df = read_data(os.join.path(path, z_score_path), 
- 					os.join.path(path, labels_path))
-
- 	return df
+###### END TO DO ########
