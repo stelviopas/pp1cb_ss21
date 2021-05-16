@@ -94,6 +94,31 @@ def read_data(embedding_path, z_score_path):
     return x,y
 
 
+def test_stratification(fold_dict, y):
+    """
+    This method takes a fold dict ({1: [1, 2], 2: [3, 4], ...}) and the z-scores
+    ([[999, 1, 2, ...], [999, 1, 2, ...], ...) and checks if each fold has roughly the same amount of amino acids
+    as well as the same distribution of ordered and disordered residues.
+    :param fold_dict: the fold dict
+    :param y: the list of lists of z-scores
+    :return: bool if folds are stratified or not
+    """
+    print("Checking stratification of folds...", end="")
+    # TODO
+    # iterating over each fold to get the individual distribution of z-scores
+    for fold, indices in fold_dict.items():
+        print(f"{fold}, {indices}")
+        z_scores = list(map(y.__getitem__, indices))
+        print(len(z_scores))
+        print(z_scores[0].shape)
+        # TODO: this is not correct yet
+        z_scores_flattened = [item for sublist in z_scores for item in sublist]
+        print(len(z_scores_flattened))
+        print()
+    print("done!")
+    return False
+
+
 def split_data(y, num_folds=10):
     """
     Takes two lists (x = embeddings, y = z-scores) and splits the data into ten folds.
@@ -109,7 +134,7 @@ def split_data(y, num_folds=10):
     start_index = 0
     # if the number of proteins is not evenly divisible by the number of folds, the last samples are distributed
     # evenly across folds
-    fold_size = math.floor(len(x) / num_folds)
+    fold_size = math.floor(len(y) / num_folds)
     for fold in range(num_folds):
         fold_dict[fold] = list(range(start_index, start_index + fold_size))
         start_index += fold_size
@@ -117,20 +142,22 @@ def split_data(y, num_folds=10):
     # distributing samples which are left over (due to the number of samples not being divisible by the number of folds)
     # evenly across folds
     fold = 0
-    while start_index < len(x):
+    while start_index < len(y):
         fold_dict[fold] += [start_index]
         start_index += 1
         fold += 1
 
     # sanity check that we did not loose any samples while splitting
-    assert sum([len(fold) for fold in fold_dict.values()]) == len(x), "Number of samples after splitting does not " \
+    assert sum([len(fold) for fold in fold_dict.values()]) == len(y), "Number of samples after splitting does not " \
                                                                       "match number of samples before splitting."
 
-    additional_text = "" if len(x) % num_folds == 0 else f" with {len(x) % num_folds} left over samples " \
+    additional_text = "" if len(y) % num_folds == 0 else f" with {len(y) % num_folds} left over samples " \
                                                          f"being distributed evenly among folds"
     print(f"done! Created {num_folds} splits of size {fold_size}{additional_text}.")
 
-    # TODO: ensure stratification of folds
+    # TODO: use the results of this to determine if we should proceed with the current folds
+    test_stratification(fold_dict, y)
+
     return fold_dict
 
 
