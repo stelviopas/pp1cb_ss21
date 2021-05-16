@@ -3,6 +3,8 @@ import math
 import h5py
 import numpy as np
 
+import pandas as pd
+
 
 def read_embeddings(embedding_file):
     """
@@ -75,7 +77,7 @@ def read_data(embedding_path, z_score_path):
     to be done once.
     :param embedding_path: path to the embedding file
     :param z_score_path: path to the z_score file
-    :return: two lists: x (embeddings), y (z-scores)
+    :return: pd.DataFrame with two columns:  (x: embeddings, y: z-scores)
     """
     # reading in the two necessary files
     embeddings = read_embeddings(embedding_path)
@@ -87,7 +89,9 @@ def read_data(embedding_path, z_score_path):
     # combining the data into a single dataframe
     x, y = match_data(embeddings, z_scores)
 
-    return x, y
+   #df = pd.DataFrame([embeddings, z_scores], columns = ['x', 'y'])
+
+    return x,y
 
 
 def split_data(y, num_folds=10):
