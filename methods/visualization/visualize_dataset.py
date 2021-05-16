@@ -60,7 +60,8 @@ def plot_z_score_histogram(save_path="plots"):
     plt.tight_layout()
     plt.savefig(f"{save_path}/z_score_histogram.png")
 
-    print(f"done! {'{:.2f}'.format(unknown_percentage)}% of all z-scores were unknown and hence removed from the "
+    print(f"done! {len(z_scores_flattened)} usable z-scores in total. "
+          f"{'{:.2f}'.format(unknown_percentage)}% of all z-scores were unknown and hence removed from the "
           f"histogram.")
 
 
