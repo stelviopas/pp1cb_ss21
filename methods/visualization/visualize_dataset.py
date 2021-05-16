@@ -65,5 +65,30 @@ def plot_z_score_histogram(save_path="plots"):
           f"histogram.")
 
 
+def plot_protein_length_histogram(save_path="plots"):
+    """
+    This method reads in the z-scores and plots the distribution of protein lengths in the form of a histogram.
+    :param save_path: the path where the histogram will be saved
+    """
+    z_scores = read_z_scores(z_score_file="../../data/disorder_labels.fasta")
+
+    print("Plotting histogram of the protein lengths...", end="")
+
+    # extracting all protein lengths into a single list
+    protein_lengths = [len(list(x)) for x in z_scores.values()]
+
+    # creating the histogram and saving it to a file
+    sns.set_style('darkgrid')
+    sns.displot(protein_lengths)
+    plt.xlabel("protein length")
+    plt.ylabel("density")
+    plt.title(f"Distribution of protein lengths")
+    plt.tight_layout()
+    plt.savefig(f"{save_path}/protein_length_histogram.png")
+
+    print(f"done!")
+
+
 if __name__ == "__main__":
-    plot_z_score_histogram()
+    # plot_z_score_histogram()
+    plot_protein_length_histogram()
