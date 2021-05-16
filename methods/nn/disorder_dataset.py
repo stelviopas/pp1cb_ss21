@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from torch.utils.data.dataset import Dataset
 
-from ..utils.read_embeddings import read_data
+from utils.read_embeddings import read_data
 
 # TO DO: setup.py
 
