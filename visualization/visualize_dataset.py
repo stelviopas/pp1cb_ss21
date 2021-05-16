@@ -1,10 +1,10 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
-from utils.read_embeddings import read_z_scores
+#from ..utils.read_embeddings import read_z_scores
 
 
-def plot_z_score_histogram(z_scores, save_path="plots"):
+def plot_z_score_histogram(z_scores, save_path="./visualization/plots"):
     """
     This method reads in the z-scores and plots their distribution in the form of a histogram.
     Unknown values (999) are removed and reported in the plot title.
@@ -37,7 +37,7 @@ def plot_z_score_histogram(z_scores, save_path="plots"):
           f"histogram.")
 
 
-def plot_protein_length_histogram(z_scores, save_path="plots"):
+def plot_protein_length_histogram(z_scores, save_path="./visualization/plots"):
     """
     This method reads in the z-scores and plots the distribution of protein lengths in the form of a histogram.
     :param save_path: the path where the histogram will be saved
@@ -59,7 +59,9 @@ def plot_protein_length_histogram(z_scores, save_path="plots"):
     print(f"done! Median length: {np.median(protein_lengths)}.")
 
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     z_scores = read_z_scores(z_score_file="../../data/disorder_labels.fasta")
     plot_z_score_histogram(z_scores)
-    plot_protein_length_histogram(z_scores)
+    plot_protein_length_histogram(z_scores)'''
+
+
