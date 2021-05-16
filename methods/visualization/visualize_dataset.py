@@ -1,43 +1,15 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from ..utils.read_embeddings import read_z_scores
 
 
-# TODO: replace this with import later
-def read_z_scores(z_score_file):
-    """
-    Reads in a file in fasta format.
-    :param z_score_file: path to the fasta file
-    :return: dictionary with protein IDs as keys and z-scores (1D numpy arrays) as values
-    """
-    print("Reading Z-scores...", end="")
-
-    z_scores = dict()
-    protein_id = ""
-    with open(z_score_file, 'r', newline='') as reader:
-        for line in reader.readlines():
-            line = line.rstrip()
-            if line.startswith('>'):
-                protein_id = line[1:]
-            else:
-                # removing the [ and ] at the end of the line and splitting the data into a list
-                z_scores[protein_id] = np.array([float(x) for x in line[1:-1].split(", ")])
-
-    print(f"done! Found {len(z_scores.keys())} proteins.")
-
-    return z_scores
-
-# ======================= ORIGINAL CODE FROM HERE ON OUT =================================
-
-
-def plot_z_score_histogram(save_path="plots"):
+def plot_z_score_histogram(z_scores, save_path="plots"):
     """
     This method reads in the z-scores and plots their distribution in the form of a histogram.
     Unknown values (999) are removed and reported in the plot title.
     :param save_path: the path where the histogram will be saved
     """
-    z_scores = read_z_scores(z_score_file="../../data/disorder_labels.fasta")
-
     print("Plotting histogram of all z-scores...", end="")
 
     # flattening all z-scores to a 1D numpy array
@@ -65,13 +37,11 @@ def plot_z_score_histogram(save_path="plots"):
           f"histogram.")
 
 
-def plot_protein_length_histogram(save_path="plots"):
+def plot_protein_length_histogram(z_scores, save_path="plots"):
     """
     This method reads in the z-scores and plots the distribution of protein lengths in the form of a histogram.
     :param save_path: the path where the histogram will be saved
     """
-    z_scores = read_z_scores(z_score_file="../../data/disorder_labels.fasta")
-
     print("Plotting histogram of the protein lengths...", end="")
 
     # extracting all protein lengths into a single list
@@ -90,5 +60,6 @@ def plot_protein_length_histogram(save_path="plots"):
 
 
 if __name__ == "__main__":
-    # plot_z_score_histogram()
+    z_scores = read_z_scores(z_score_file="../../data/disorder_labels.fasta")
+    plot_z_score_histogram()
     plot_protein_length_histogram()
