@@ -55,7 +55,7 @@ def plot_z_score_histogram(save_path="plots"):
     sns.set_style('darkgrid')
     sns.displot(z_scores_flattened)
     plt.xlabel("z-score")
-    plt.ylabel("density")
+    plt.ylabel("count")
     plt.title(f"Distribution of z-scores ({'{:.2f}'.format(unknown_percentage)}% unknown)")
     plt.tight_layout()
     plt.savefig(f"{save_path}/z_score_histogram.png")
@@ -81,12 +81,12 @@ def plot_protein_length_histogram(save_path="plots"):
     sns.set_style('darkgrid')
     sns.displot(protein_lengths)
     plt.xlabel("protein length")
-    plt.ylabel("density")
-    plt.title(f"Distribution of protein lengths")
+    plt.ylabel("count")
+    plt.title(f"Distribution of protein lengths (median: {int(np.median(protein_lengths))})")
     plt.tight_layout()
     plt.savefig(f"{save_path}/protein_length_histogram.png")
 
-    print(f"done!")
+    print(f"done! Median length: {np.median(protein_lengths)}.")
 
 
 if __name__ == "__main__":
