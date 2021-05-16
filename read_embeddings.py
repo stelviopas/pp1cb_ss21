@@ -101,6 +101,16 @@ def test_stratification(fold_dict, y):
     """
     print("Checking stratification of folds...", end="")
     # TODO
+    # iterating over each fold to get the individual distribution of z-scores
+    for fold, indices in fold_dict.items():
+        print(f"{fold}, {indices}")
+        z_scores = list(map(y.__getitem__, indices))
+        print(len(z_scores))
+        print(z_scores[0].shape)
+        # TODO: this is not correct yet
+        z_scores_flattened = [item for sublist in z_scores for item in sublist]
+        print(len(z_scores_flattened))
+        print()
     print("done!")
     return False
 
@@ -142,7 +152,7 @@ def split_data(y, num_folds=10):
     print(f"done! Created {num_folds} splits of size {fold_size}{additional_text}.")
 
     # TODO: use the results of this to determine if we should proceed with the current folds
-    test_stratification(y, fold_dict)
+    test_stratification(fold_dict, y)
 
     return fold_dict
 
