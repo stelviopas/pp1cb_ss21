@@ -36,6 +36,21 @@ def plot_z_score_histogram(z_scores, save_path="./visualization/plots"):
           f"{'{:.2f}'.format(unknown_percentage)}% of all z-scores were unknown and hence removed from the "
           f"histogram.")
 
+    '''
+    This methods reads in averaged z-scores and creates a histrogram.
+    :param save_path: the path where the histogram will be saved
+    '''
+def plot_avg_z_score_histogramm(z_scores, save_path="./visualization/plots"):
+
+    # creating the histogram and saving it to a file
+    sns.set_style('darkgrid')
+    sns.displot(z_scores)
+    plt.xlabel("z-score")
+    plt.ylabel("count")
+    plt.title(f"Distribution of averaged z-scores per aa sequence")
+    plt.tight_layout()
+    plt.savefig(f"{save_path}/avg_z_scores_histogram.png")
+
 
 def plot_protein_length_histogram(z_scores, save_path="./visualization/plots"):
     """
