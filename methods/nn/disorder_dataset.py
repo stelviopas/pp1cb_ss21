@@ -25,13 +25,53 @@ def create_dataframe(path=os.path.join(project_root, "data")):
 
     return df
 
+'''
+Calculates an average z_score per aa sequence. Unknown z-scores are
+ignored.
+
+Args:
+    In:
+        y: list, list of lists of length #of aa sequences
+            entries are lists which contain z-score for each aa of a sequence.
+    Out:
+        avg_zs: list, list of averaged z-scores per sequence 
+'''
+
+def calculate_avg_z(y):
+
+    unknown_z_value = 999.0
+    avg_zs = []
+
+
+    for z_scores_per_seq in y:
+        # seq length after removing unknown z-scores 
+        trimmed_length = 0
+        # sum of all defined z-scores
+        total_z_sum = 0
+
+        # filter out the 999.0 unnknown z-scores 
+        for z_score in z_scores_per_seq:
+            if z_score != 999.0:
+                trimmed_length += 1
+                total_z_sum += z_score
+
+        avg_zs.append(total_z_sum/trimmed_length)
+
+    return avg_zs
+
+
+
 
 
 ###### TO DO #######
 
-''' Wrap up (targets, labels) to PyTorch Dataset.
-The code below is a basic skeleton for convertion of a data formed as a list of tuples to
-a PyTorch dataser. You might need adapt that for further needs. '''
+'''
+Wrap up (targets, labels) to PyTorch Dataset.
+The code below is a basic skeleton for convertion of a data formed as
+a list of tuples to a PyTorch dataser.
+You might need adapt that for further needs.
+'''
+
 
 class DisorderDataset(Dataset):
 
