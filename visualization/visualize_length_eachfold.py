@@ -204,4 +204,4 @@ def countlength(sep_list):
 '''
 if __name__ == "__main__":
     x, y = read_data(embedding_path="D:\\Study thingie\\FACH\\S4 WS2021\\PP\\uebung\\data\\baseline_embeddings_disorder.h5", z_score_path="D:\\Study thingie\\FACH\\S4 WS2021\\PP\\uebung\\data\\disorder_labels.fasta")
-    sep_and_show(y,110)'''
+    sep_and_show(y,110) '''
