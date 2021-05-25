@@ -79,8 +79,10 @@ class DisorderDataset(Dataset):
                     trimmed_length += 1
                     total_z_sum += z_score
 
-            avg_zs.append(total_z_sum/trimmed_length)
-
+            #avg_zs.append(total_z_sum/trimmed_length)
+            
+            avg_zs.append(total_z_sum)
+            
         return np.array(avg_zs)
 
     ''' Assign bins (int class indicator) to each of samples according
@@ -124,7 +126,21 @@ def load_dataset(path=os.path.join(project_root, "data")):
 
     x,y = read_data(os.path.join(path, z_score_path), 
                     os.path.join(path, labels_path))
+    new_x = []
+    
+    test = 23
+    
+    for protein in x:
+        new_x.append(protein[0:test])
+    x = new_x
 
+    new_y = []
+    
+    for z_score in y:
+        new_y.append(z_score[0:test])
+    y = new_y
+    
+    
     dataset = DisorderDataset(x,y)
 
     return dataset
@@ -148,11 +164,12 @@ def collate(batch):
         To be passed to DataLoader as the `collate_fn` argument
     """
     assert isinstance(batch, list)
-    data = pad_sequence([b['embeddings'] for b in batch])
+    data = pad_sequence([b['embeddings'] for b in batch], batch_first = True)
     lengths = torch.tensor([len(b['embeddings']) for b in batch])
-    padded_batches = pad_sequence([b['z_scores'] for b in batch], padding_value=999.0)
+    padded_batches = pad_sequence([b['z_scores'] for b in batch], padding_value=999.0, batch_first = True)
     label = torch.stack([p for p in padded_batches])
     
+    print(f"Size of padded data {data.size()}")
     return {
         'embeddings': data,
         'z_scores': label,
