@@ -5,6 +5,7 @@ from torch.utils.data.dataset import Dataset
 import numpy as np
 
 from ..utils.read_embeddings import read_data
+from torch.nn.utils.rnn import pad_sequence
 
 # TO DO: setup.py
 
@@ -141,3 +142,19 @@ def create_dataframe(path=os.path.join(project_root, "data")):
     df = pd.DataFrame({'x': x, 'y': y})
 
     return df
+
+def collate(batch):
+    """
+        To be passed to DataLoader as the `collate_fn` argument
+    """
+    assert isinstance(batch, list)
+    data = pad_sequence([b['embeddings'] for b in batch])
+    lengths = torch.tensor([len(b['embeddings']) for b in batch])
+    padded_batches = pad_sequence([b['z_scores'] for b in batch], padding_value=999.0)
+    label = torch.stack([p for p in padded_batches])
+    
+    return {
+        'embeddings': data,
+        'z_scores': label,
+        'lengths': lengths
+    }
