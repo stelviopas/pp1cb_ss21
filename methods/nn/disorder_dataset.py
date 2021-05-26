@@ -11,6 +11,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 project_root = os.getcwd()
 
+
 class DisorderDataset(Dataset):
 
     def __init__(self, x, y):
@@ -24,7 +25,7 @@ class DisorderDataset(Dataset):
         """
 
         self.x = x
-        self.y = y
+        self.y = self.calculate_avg_z(y)
         self.avg_y = self.calculate_avg_z(y)
         self.aa_len = np.array([len(seq) for seq in x])
         self.bins = self.assign_bins(self.avg_y)
@@ -43,12 +44,12 @@ class DisorderDataset(Dataset):
         embeddings = self.x[i]
         z_scores = self.y[i]
 
-        return {
-            'embeddings': torch.tensor(embeddings).float(),
-            'z_scores': torch.tensor(z_scores).float(),
-        }
+        # return {
+        #     'embeddings': torch.tensor(embeddings).float(),
+        #     'z_scores': torch.tensor(z_scores).float(),
+        # }
+        return [torch.tensor(embeddings).float(), torch.tensor(z_scores).float()]
 
-    
     '''
     Calculates an average z_score per aa sequence. Unknown z-scores are
     ignored.
@@ -61,11 +62,10 @@ class DisorderDataset(Dataset):
             avg_zs: list, list of averaged z-scores per sequence 
     '''
 
-    def calculate_avg_z(self,y):
+    def calculate_avg_z(self, y):
 
         unknown_z_value = 999.0
         avg_zs = []
-
 
         for z_scores_per_seq in y:
             # seq length after removing unknown z-scores 
@@ -79,10 +79,8 @@ class DisorderDataset(Dataset):
                     trimmed_length += 1
                     total_z_sum += z_score
 
-            #avg_zs.append(total_z_sum/trimmed_length)
-            
-            avg_zs.append(total_z_sum)
-            
+            avg_zs.append(total_z_sum/trimmed_length)
+
         return np.array(avg_zs)
 
     ''' Assign bins (int class indicator) to each of samples according
@@ -95,7 +93,7 @@ class DisorderDataset(Dataset):
             assigned_bins: list of integers indicating an artificial class label
          '''
 
-    def assign_bins(self,avg_z, bins_num=4):
+    def assign_bins(self, avg_z, bins_num=4):
         samples_per_bin, bins, = np.histogram(avg_z, bins=4)
         print("Samples per bin", samples_per_bin)
         print("Thresholds of bins", bins)
@@ -115,63 +113,39 @@ class DisorderDataset(Dataset):
                 break
         return np.array(assigned_bins)
 
-    
-
 
 def load_dataset(path=os.path.join(project_root, "data")):
-
     z_score_path = 'baseline_embeddings_disorder.h5'
 
     labels_path = 'disorder_labels.fasta'
 
-    x,y = read_data(os.path.join(path, z_score_path), 
-                    os.path.join(path, labels_path))
-    new_x = []
-    
-    test = 23
-    
-    for protein in x:
-        new_x.append(protein[0:test])
-    x = new_x
+    x, y = read_data(os.path.join(path, z_score_path),
+                     os.path.join(path, labels_path))
 
-    new_y = []
-    
-    for z_score in y:
-        new_y.append(z_score[0:test])
-    y = new_y
-    
-    
-    dataset = DisorderDataset(x,y)
+    dataset = DisorderDataset(x, y)
 
     return dataset
 
 
 def create_dataframe(path=os.path.join(project_root, "data")):
-    
     z_score_path = 'baseline_embeddings_disorder.h5'
 
     labels_path = 'disorder_labels.fasta'
 
-    x,y = read_data(os.path.join(path, z_score_path), 
-                    os.path.join(path, labels_path))
+    x, y = read_data(os.path.join(path, z_score_path),
+                     os.path.join(path, labels_path))
 
     df = pd.DataFrame({'x': x, 'y': y})
 
     return df
+
 
 def collate(batch):
     """
         To be passed to DataLoader as the `collate_fn` argument
     """
     assert isinstance(batch, list)
-    data = pad_sequence([b['embeddings'] for b in batch], batch_first = True)
-    lengths = torch.tensor([len(b['embeddings']) for b in batch])
-    padded_batches = pad_sequence([b['z_scores'] for b in batch], padding_value=999.0, batch_first = True)
-    label = torch.stack([p for p in padded_batches])
-    
-    print(f"Size of padded data {data.size()}")
-    return {
-        'embeddings': data,
-        'z_scores': label,
-        'lengths': lengths
-    }
+    data = [item[0] for item in batch]
+    target = [item[1] for item in batch]
+
+    return [data, target]
