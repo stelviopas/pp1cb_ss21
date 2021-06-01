@@ -1,7 +1,9 @@
 import math
+import os
 
 import h5py
 import numpy as np
+
 
 def read_embeddings(embedding_file):
     """
@@ -86,32 +88,7 @@ def read_data(embedding_path, z_score_path):
     # combining the data into a single dataframe
     x, y = match_data(embeddings, z_scores)
 
-    return x,y
-
-
-def test_stratification(fold_dict, y):
-    """
-    This method takes a fold dict ({1: [1, 2], 2: [3, 4], ...}) and the z-scores
-    ([[999, 1, 2, ...], [999, 1, 2, ...], ...) and checks if each fold has roughly the same amount of amino acids
-    as well as the same distribution of ordered and disordered residues.
-    :param fold_dict: the fold dict
-    :param y: the list of lists of z-scores
-    :return: bool if folds are stratified or not
-    """
-    print("Checking stratification of folds...", end="")
-    # TODO
-    # iterating over each fold to get the individual distribution of z-scores
-    for fold, indices in fold_dict.items():
-        print(f"{fold}, {indices}")
-        z_scores = list(map(y.__getitem__, indices))
-        print(len(z_scores))
-        print(z_scores[0].shape)
-        # TODO: this is not correct yet
-        z_scores_flattened = [item for sublist in z_scores for item in sublist]
-        print(len(z_scores_flattened))
-        print()
-    print("done!")
-    return False
+    return x, y
 
 
 def split_data(y, num_folds=10):
@@ -150,12 +127,11 @@ def split_data(y, num_folds=10):
                                                          f"being distributed evenly among folds"
     print(f"done! Created {num_folds} splits of size {fold_size}{additional_text}.")
 
-    # TODO: use the results of this to determine if we should proceed with the current folds
-    test_stratification(fold_dict, y)
-
     return fold_dict
 
 
-'''if __name__ == "__main__":
-    x, y = read_data(embedding_path="data/baseline_embeddings_disorder.h5", z_score_path="data/disorder_labels.fasta")
-    fold_dict = split_data(x)'''
+
+
+
+# if __name__ == "__main__":
+#     x, y = read_data(embedding_path="../../data/baseline_embeddings_disorder.h5", z_score_path="../../data/disorder_labels.fasta")

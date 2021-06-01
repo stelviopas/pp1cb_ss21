@@ -66,7 +66,6 @@ class DisorderDataset(Dataset):
         unknown_z_value = 999.0
         avg_zs = []
 
-
         for z_scores_per_seq in y:
             # seq length after removing unknown z-scores 
             trimmed_length = 0
@@ -113,19 +112,37 @@ class DisorderDataset(Dataset):
                 break
         return np.array(assigned_bins)
 
-    
 
-
-def load_dataset(path=os.path.join(project_root, "data")):
+def load_dataset(path=os.path.join(project_root, "data"), window_size=7):
 
     z_score_path = 'baseline_embeddings_disorder.h5'
 
     labels_path = 'disorder_labels.fasta'
 
-    x,y = read_data(os.path.join(path, z_score_path), 
+    x, y = read_data(os.path.join(path, z_score_path),
                     os.path.join(path, labels_path))
 
-    dataset = DisorderDataset(x,y)
+    # adding a padding of size (window_size-1)/2 so that we can have a sliding window which also incorporates
+    # residues at the edges
+    padding_size = int((window_size - 1) / 2)
+    x, y = add_padding(x, y, padding_size)
+
+    # scaling z-score values between 0 and 1 to facilitate training
+    y = scale_z_scores(y)
+
+    # interpolate missing values (999s)
+    # TODO: interpolate missing values
+    #  for now this is a dummy function which just writes zeroes
+    y = interpolate_values(y)
+
+    # splitting the data into windows of a certain size
+    x, y = split_data_into_windows(x, y, window_size)
+    print(len(x))
+    print(len(y))
+    print(x[0].shape)
+    print(y[0].shape)
+
+    dataset = DisorderDataset(x, y)
 
     return dataset
 
@@ -143,6 +160,7 @@ def create_dataframe(path=os.path.join(project_root, "data")):
 
     return df
 
+
 def collate(batch):
     """
         To be passed to DataLoader as the `collate_fn` argument
@@ -158,3 +176,37 @@ def collate(batch):
         'z_scores': label,
         'lengths': lengths
     }
+
+
+def add_padding(embeddings, z_scores, padding_size):
+    embeddings = [np.pad(x, ((padding_size, padding_size), (0, 0)), 'constant', constant_values=0) for x in embeddings]
+    z_scores = [np.pad(x, padding_size, 'constant', constant_values=999) for x in z_scores]
+    return embeddings, z_scores
+
+
+def scale_z_scores(z_scores):
+    return [np.where((x == 999), x + 0, (x + 5) / 21.15) for x in z_scores]
+
+
+def interpolate_values(z_scores):
+    return [np.where((x == 999), 0, x) for x in z_scores]
+
+
+def split_data_into_windows(embeddings, z_scores, window_size):
+    x_new = []
+    y_new = []
+
+    for embedding, z_score in zip(embeddings, z_scores):
+        z_score_new = np.lib.stride_tricks.sliding_window_view(z_score, window_size)
+        embedding_new = np.lib.stride_tricks.sliding_window_view(embedding, window_size, 0)
+        for window in z_score_new:
+            y_new.append(window)
+        for window in embedding_new:
+            x_new.append(window)
+
+    return x_new, y_new
+
+
+# # this is just for testing purposes
+# if __name__ == "__main__":
+#     load_dataset(path="/home/matthias/Code/Python/pp1cb_ss21/data")
