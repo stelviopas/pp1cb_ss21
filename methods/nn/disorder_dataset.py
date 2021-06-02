@@ -7,6 +7,14 @@ import numpy as np
 from ..utils.read_embeddings import read_data
 from torch.nn.utils.rnn import pad_sequence
 
+# this is if you want to run it directly here (not recommended)
+# import torch
+# from sklearn.model_selection import StratifiedKFold
+# from sklearn.model_selection import train_test_split
+# from torch.utils.data import DataLoader
+# import pytorch_lightning as pl
+# from ff_net import ConvNet
+
 # TO DO: setup.py
 
 project_root = os.getcwd()
@@ -25,9 +33,8 @@ class DisorderDataset(Dataset):
 
         self.x = x
         self.y = y
-        self.avg_y = self.calculate_avg_z(y)
         self.aa_len = np.array([len(seq) for seq in x])
-        self.bins = self.assign_bins(self.avg_y)
+        self.bins = self.assign_bins(self.y)
 
     def __len__(self):
         return len(self.x)
@@ -47,40 +54,6 @@ class DisorderDataset(Dataset):
             'embeddings': torch.tensor(embeddings).float(),
             'z_scores': torch.tensor(z_scores).float(),
         }
-
-    
-    '''
-    Calculates an average z_score per aa sequence. Unknown z-scores are
-    ignored.
-
-    Args:
-        In:
-            y: list, list of lists of length #of aa sequences
-                entries are lists which contain z-score for each aa of a sequence.
-        Out:
-            avg_zs: list, list of averaged z-scores per sequence 
-    '''
-
-    def calculate_avg_z(self,y):
-
-        unknown_z_value = 999.0
-        avg_zs = []
-
-        for z_scores_per_seq in y:
-            # seq length after removing unknown z-scores 
-            trimmed_length = 0
-            # sum of all defined z-scores
-            total_z_sum = 0
-
-            # filter out the 999.0 unnknown z-scores 
-            for z_score in z_scores_per_seq:
-                if z_score != 999.0:
-                    trimmed_length += 1
-                    total_z_sum += z_score
-
-            avg_zs.append(total_z_sum/trimmed_length)
-
-        return np.array(avg_zs)
 
     ''' Assign bins (int class indicator) to each of samples according
     to histogram of average z-scores.
@@ -131,16 +104,16 @@ def load_dataset(path=os.path.join(project_root, "data"), window_size=7):
     y = scale_z_scores(y)
 
     # interpolate missing values (999s)
-    # TODO: interpolate missing values
-    #  for now this is a dummy function which just writes zeroes
     y = interpolate_values(y)
 
     # splitting the data into windows of a certain size
+    # the resulting z-score is simply the one in the middle
     x, y = split_data_into_windows(x, y, window_size)
     print(len(x))
     print(len(y))
     print(x[0].shape)
     print(y[0].shape)
+    print(y[0])
 
     dataset = DisorderDataset(x, y)
 
@@ -188,8 +161,61 @@ def scale_z_scores(z_scores):
     return [np.where((x == 999), x + 0, (x + 5) / 21.15) for x in z_scores]
 
 
+def list_duplicates_of(seq, item):
+    start_at = -1
+    locs = []
+    while True:
+        try:
+            loc = seq.index(item, start_at + 1)
+        except ValueError:
+            break
+        else:
+            locs.append(loc)
+            start_at = loc
+    return locs
+
+
+def interpolate_values_in_list(list_of_z_scores, padding_interpolation):
+    '''
+    This function fist get list of values and find the score, which is 999,
+     and replace is with interpolated value
+     If padding_interpolation is true, if unknow value(999) is at the beginning and the end of value sequences,
+    it will put it into 0. Or else the np.interp will interpolate the value as the first known value
+    '''
+    number_to_replace = 999
+    known_value_list = list_of_z_scores.copy()
+
+    if padding_interpolation:
+        for i in range(len(known_value_list)):
+            if known_value_list[i] == 999:
+                known_value_list[i] = 0
+            else:
+                break
+
+        for i in range(len(known_value_list)):
+            if known_value_list[len(known_value_list) - i - 1] == 999:
+                known_value_list[len(known_value_list) - i - 1] = 0
+            else:
+                break
+    end_list = known_value_list
+    interpolate_position = list_duplicates_of(known_value_list, number_to_replace)  # find position of value 999
+    known_value_list = [i for j, i in enumerate(known_value_list) if
+                        j not in interpolate_position]  # get position not with 999
+    points = np.arange(0, len(list_of_z_scores), 1).tolist()  # get sequence length
+
+    for pos in interpolate_position:  # remove position with 999
+        points.remove(pos)
+    interpolate_list = np.interp(interpolate_position, points, known_value_list)
+    i = 0  # pointer
+    for val in range(len(end_list)):  # put 2 lists together
+        if end_list[val] == number_to_replace:
+            end_list[val] = interpolate_list[i]
+            i = i + 1
+    return end_list
+
+
 def interpolate_values(z_scores):
-    return [np.where((x == 999), 0, x) for x in z_scores]
+    return [interpolate_values_in_list(list(x), padding_interpolation=True) for x in z_scores]
 
 
 def split_data_into_windows(embeddings, z_scores, window_size):
@@ -200,13 +226,106 @@ def split_data_into_windows(embeddings, z_scores, window_size):
         z_score_new = np.lib.stride_tricks.sliding_window_view(z_score, window_size)
         embedding_new = np.lib.stride_tricks.sliding_window_view(embedding, window_size, 0)
         for window in z_score_new:
-            y_new.append(window)
+            # for the z-scores, we only want the middle one
+            y_new.append(window[int((window_size-1)/2)])
         for window in embedding_new:
             x_new.append(window)
 
     return x_new, y_new
 
 
+# TODO: this should go somewhere else, it is just here for testing since I don't want to mess with the notebook
+def nested_cross_validation(dataset,
+                            model=None,
+                            mode='print_fold_info',
+                            k=10, *kwargs):
+    # Set fixed random number seed
+    SEED = 1
+    torch.manual_seed(SEED)
+
+    # Define the K-fold Cross Validator
+    skf = StratifiedKFold(n_splits=k, random_state=SEED, shuffle=True)
+
+    # For folds results
+    results = {}
+    # For debugging loaders
+    loaders = {}
+
+    # Nested K-Fold Cross Validation model evaluation
+    # We split the data stratified on artificially constructed bins in df['bins'
+    # and extract indices.
+
+    # By splitting we only extract indices of samples for each test/train/val sets,
+    # thus we only need either X or y (equal length).
+    # For stratification, however, we require the artificially assigned bins whic are also defined in the
+    # dataset class
+
+    data = dataset.y
+    stratify_on = dataset.bins
+
+    for fold, (train_val_ids, test_ids) in enumerate(skf.split(data, stratify_on)):
+
+        print(f"Fold {fold}")
+
+        train_ids, val_ids = train_test_split(train_val_ids,
+                                              test_size=0.20,  # 0.25 x 0.8 = 0.2
+                                              stratify=stratify_on[train_val_ids],
+                                              random_state=SEED)
+
+        # Define data loaders for training and testing data in this fold
+        valloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=10,
+            #collate_fn=collate,
+            sampler=val_ids)
+
+        trainloader = torch.utils.data.DataLoader(
+            dataset,
+            #collate_fn=collate,
+            batch_size=10, sampler=train_ids)
+
+        testloader = torch.utils.data.DataLoader(
+            dataset,
+            #collate_fn=collate,
+            batch_size=10, sampler=test_ids)
+
+        if mode == 'print_fold_info':
+
+            loaders[fold] = [trainloader, valloader, testloader]
+
+            print('train -  {}, avg_len - {:.2f}  |  val -  {}, avg_len - {:.2f}'.format(
+                np.sum(np.bincount(stratify_on[train_ids])),
+                np.sum(dataset.aa_len[train_ids]) / len(train_ids),
+                np.sum(np.bincount(stratify_on[val_ids])),
+                np.sum(dataset.aa_len[val_ids]) / len(val_ids)))
+
+            print('test -  {}, avg_len - {:.2f}'.format(
+                np.sum(np.bincount(stratify_on[test_ids])),
+                np.sum(dataset.aa_len[test_ids]) / len(test_ids)))
+
+            show_batches = 5
+            for i, batch in enumerate(trainloader):
+                print(f"Batch {i}:\n{batch}\n")
+                if i == show_batches:
+                    break
+
+            print()
+
+        elif mode == 'evaluate':
+            trainer = pl.Trainer(weights_summary=None, max_epochs=100, deterministic=True)
+            trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
+        else:
+            print("Mode is not specified!")
+            break
+
+    if mode == 'evaluate':
+        return results
+    else:
+        return loaders
+
+
 # # this is just for testing purposes
 # if __name__ == "__main__":
-#     load_dataset(path="/home/matthias/Code/Python/pp1cb_ss21/data")
+#     dataset = load_dataset(path="/home/matthias/Code/Python/pp1cb_ss21/data")
+#     nested_cross_validation(dataset, mode='evaluate', model=ConvNet)
+
