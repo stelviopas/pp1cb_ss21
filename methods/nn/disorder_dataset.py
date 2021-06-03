@@ -7,7 +7,7 @@ import numpy as np
 from ..utils.read_embeddings import read_data
 from torch.nn.utils.rnn import pad_sequence
 
-# this is if you want to run it directly here (not recommended)
+# # this is if you want to run it directly here (not recommended)
 # import torch
 # from sklearn.model_selection import StratifiedKFold
 # from sklearn.model_selection import train_test_split
@@ -18,6 +18,7 @@ from torch.nn.utils.rnn import pad_sequence
 # TO DO: setup.py
 
 project_root = os.getcwd()
+
 
 class DisorderDataset(Dataset):
 
@@ -112,8 +113,8 @@ def load_dataset(path=os.path.join(project_root, "data"), window_size=7):
     print(len(x))
     print(len(y))
     print(x[0].shape)
-    print(y[0].shape)
     print(y[0])
+    print(min(y))
 
     dataset = DisorderDataset(x, y)
 
@@ -158,7 +159,19 @@ def add_padding(embeddings, z_scores, padding_size):
 
 
 def scale_z_scores(z_scores):
-    return [np.where((x == 999), x + 0, (x + 5) / 21.15) for x in z_scores]
+    # there are some labels for which we have values below -5 (e. g. -5.374), so instead of hardcoding 5 and 16.15,
+    # we instead take the min and max of the array (these are -5.583)
+    # this is not the most elegant solution but we need to exclude 999s for the calculation of the max
+    min_total = 0
+    max_total = 0
+    for z_score_list in z_scores:
+        for z_score in z_score_list:
+            if z_score < min_total:
+                min_total = z_score
+            if z_score > max_total and z_score != 999:
+                max_total = z_score
+    output = [np.where((x == 999), x + 0, (x + abs(min_total)) / (abs(min_total)+max_total)) for x in z_scores]
+    return output
 
 
 def list_duplicates_of(seq, item):
@@ -211,6 +224,7 @@ def interpolate_values_in_list(list_of_z_scores, padding_interpolation):
         if end_list[val] == number_to_replace:
             end_list[val] = interpolate_list[i]
             i = i + 1
+
     return end_list
 
 
@@ -324,8 +338,11 @@ def nested_cross_validation(dataset,
         return loaders
 
 
-# # this is just for testing purposes
-# if __name__ == "__main__":
-#     dataset = load_dataset(path="/home/matthias/Code/Python/pp1cb_ss21/data")
-#     nested_cross_validation(dataset, mode='evaluate', model=ConvNet)
+# this is just for testing purposes
+if __name__ == "__main__":
+    dataset = load_dataset(path="/home/matthias/Code/Python/pp1cb_ss21/data", window_size=16)
+    hparams = {'hidden_size': 112,
+               "learning_rate": 1e-4
+               }
+    nested_cross_validation(dataset, mode='evaluate', model=ConvNet(hparams=hparams))
 
