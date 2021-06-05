@@ -5,8 +5,7 @@ from disorder_dataset import load_dataset
 from nested_cross_validation import nested_cross_validation
 
 
-
-class ConvNet(pl.LightningModule):
+class FFNet(pl.LightningModule):
     """Facial keypoint detection model"""
 
     def __init__(self, hparams):
@@ -15,7 +14,7 @@ class ConvNet(pl.LightningModule):
         Warning: Don't change the  method declaration (i.e. by adding more
             arguments), otherwise it might not work on the submission server
         """
-        super(ConvNet, self).__init__()
+        super(FFNet, self).__init__()
         self.hparams = hparams
         ########################################################################
         # TODO: Define all the layers of your CNN, the only requirements are:  #
@@ -32,17 +31,13 @@ class ConvNet(pl.LightningModule):
 
         self.model = nn.Sequential(
             # input: batch_size * 1024 * window_size
-            nn.Conv1d(in_channels=1024, out_channels=1024, kernel_size=7),
-            nn.PReLU(),
-            # at this point, the size of the sequence is 1024 * (window_size - kernelsize + 1)
-            # 15 - 6 = 9
-            nn.Conv1d(in_channels=1024, out_channels=1024, kernel_size=3),
-            nn.PReLU(),
-            # here, it is 9 - 2 = 7
-            # maybe add this in later
-            # nn.MaxPool1d(3),
             nn.Flatten(),
-            nn.Linear(1024 * 7, 1)
+            # here, we have 1024 * window_size
+            nn.Linear(1024 * hparams['window_size'], 128),
+            nn.PReLU(),
+            nn.Linear(128, 64),
+            nn.Sigmoid(),
+            nn.Linear(64, 1),
         )
 
         print(self.model)
@@ -57,7 +52,6 @@ class ConvNet(pl.LightningModule):
         # for an input image x, forward(x) should return the                   #
         # corresponding predicted keypoints                                    #
         ########################################################################
-        print(x.shape)
         x = self.model(x)
 
         ########################################################################
@@ -114,4 +108,4 @@ if __name__ == "__main__":
                'window_size': 15
                }
     dataset = load_dataset(path="../../../pp1cb_ss21/data", window_size=hparams['window_size'])
-    nested_cross_validation(dataset, mode='evaluate', model=ConvNet(hparams=hparams))
+    nested_cross_validation(dataset, mode='evaluate', model=FFNet(hparams=hparams))
