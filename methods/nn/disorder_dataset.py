@@ -4,12 +4,13 @@ import torch
 from torch.utils.data.dataset import Dataset
 import numpy as np
 
-from ..utils.read_embeddings import read_data
+from utils.read_embeddings import read_data
 from torch.nn.utils.rnn import pad_sequence
 
 # TO DO: setup.py
 
 project_root = os.getcwd()
+
 
 class DisorderDataset(Dataset):
 
@@ -25,9 +26,8 @@ class DisorderDataset(Dataset):
 
         self.x = x
         self.y = y
-        self.avg_y = self.calculate_avg_z(y)
         self.aa_len = np.array([len(seq) for seq in x])
-        self.bins = self.assign_bins(self.avg_y)
+        self.bins = self.assign_bins(self.y)
 
     def __len__(self):
         return len(self.x)
@@ -47,41 +47,6 @@ class DisorderDataset(Dataset):
             'embeddings': torch.tensor(embeddings).float(),
             'z_scores': torch.tensor(z_scores).float(),
         }
-
-    
-    '''
-    Calculates an average z_score per aa sequence. Unknown z-scores are
-    ignored.
-
-    Args:
-        In:
-            y: list, list of lists of length #of aa sequences
-                entries are lists which contain z-score for each aa of a sequence.
-        Out:
-            avg_zs: list, list of averaged z-scores per sequence 
-    '''
-
-    def calculate_avg_z(self,y):
-
-        unknown_z_value = 999.0
-        avg_zs = []
-
-
-        for z_scores_per_seq in y:
-            # seq length after removing unknown z-scores 
-            trimmed_length = 0
-            # sum of all defined z-scores
-            total_z_sum = 0
-
-            # filter out the 999.0 unnknown z-scores 
-            for z_score in z_scores_per_seq:
-                if z_score != 999.0:
-                    trimmed_length += 1
-                    total_z_sum += z_score
-
-            avg_zs.append(total_z_sum/trimmed_length)
-
-        return np.array(avg_zs)
 
     ''' Assign bins (int class indicator) to each of samples according
     to histogram of average z-scores.
@@ -113,19 +78,37 @@ class DisorderDataset(Dataset):
                 break
         return np.array(assigned_bins)
 
-    
 
-
-def load_dataset(path=os.path.join(project_root, "data")):
+def load_dataset(path=os.path.join(project_root, "data"), window_size=7):
 
     z_score_path = 'baseline_embeddings_disorder.h5'
 
     labels_path = 'disorder_labels.fasta'
 
-    x,y = read_data(os.path.join(path, z_score_path), 
+    x, y = read_data(os.path.join(path, z_score_path),
                     os.path.join(path, labels_path))
 
-    dataset = DisorderDataset(x,y)
+    # adding a padding of size (window_size-1)/2 so that we can have a sliding window which also incorporates
+    # residues at the edges
+    padding_size = int((window_size - 1) / 2)
+    x, y = add_padding(x, y, padding_size)
+
+    # scaling z-score values between 0 and 1 to facilitate training
+    y = scale_z_scores(y)
+
+    # interpolate missing values (999s)
+    y = interpolate_values(y)
+
+    # splitting the data into windows of a certain size
+    # the resulting z-score is simply the one in the middle
+    x, y = split_data_into_windows(x, y, window_size)
+    print(len(x))
+    print(len(y))
+    print(x[0].shape)
+    print(y[0])
+    print(min(y))
+
+    dataset = DisorderDataset(x, y)
 
     return dataset
 
@@ -143,6 +126,7 @@ def create_dataframe(path=os.path.join(project_root, "data")):
 
     return df
 
+
 def collate(batch):
     """
         To be passed to DataLoader as the `collate_fn` argument
@@ -158,3 +142,109 @@ def collate(batch):
         'z_scores': label,
         'lengths': lengths
     }
+
+
+def add_padding(embeddings, z_scores, padding_size):
+    embeddings = [np.pad(x, ((padding_size, padding_size), (0, 0)), 'constant', constant_values=0) for x in embeddings]
+    z_scores = [np.pad(x, padding_size, 'constant', constant_values=999) for x in z_scores]
+    return embeddings, z_scores
+
+
+def scale_z_scores(z_scores):
+    # there are some labels for which we have values below -5 (e. g. -5.374), so instead of hardcoding 5 and 16.15,
+    # we instead take the min and max of the array (these are -5.583)
+    # this is not the most elegant solution but we need to exclude 999s for the calculation of the max
+    min_total = 0
+    max_total = 0
+    for z_score_list in z_scores:
+        for z_score in z_score_list:
+            if z_score < min_total:
+                min_total = z_score
+            if z_score > max_total and z_score != 999:
+                max_total = z_score
+    output = [np.where((x == 999), x + 0, (x + abs(min_total)) / (abs(min_total)+max_total)) for x in z_scores]
+    return output
+
+
+def list_duplicates_of(seq, item):
+    start_at = -1
+    locs = []
+    while True:
+        try:
+            loc = seq.index(item, start_at + 1)
+        except ValueError:
+            break
+        else:
+            locs.append(loc)
+            start_at = loc
+    return locs
+
+
+def interpolate_values_in_list(list_of_z_scores, padding_interpolation):
+    '''
+    This function fist get list of values and find the score, which is 999,
+     and replace is with interpolated value
+     If padding_interpolation is true, if unknow value(999) is at the beginning and the end of value sequences,
+    it will put it into 0. Or else the np.interp will interpolate the value as the first known value
+    '''
+    number_to_replace = 999
+    known_value_list = list_of_z_scores.copy()
+
+    if padding_interpolation:
+        for i in range(len(known_value_list)):
+            if known_value_list[i] == 999:
+                known_value_list[i] = 0
+            else:
+                break
+
+        for i in range(len(known_value_list)):
+            if known_value_list[len(known_value_list) - i - 1] == 999:
+                known_value_list[len(known_value_list) - i - 1] = 0
+            else:
+                break
+    end_list = known_value_list
+    interpolate_position = list_duplicates_of(known_value_list, number_to_replace)  # find position of value 999
+    known_value_list = [i for j, i in enumerate(known_value_list) if
+                        j not in interpolate_position]  # get position not with 999
+    points = np.arange(0, len(list_of_z_scores), 1).tolist()  # get sequence length
+
+    for pos in interpolate_position:  # remove position with 999
+        points.remove(pos)
+    interpolate_list = np.interp(interpolate_position, points, known_value_list)
+    i = 0  # pointer
+    for val in range(len(end_list)):  # put 2 lists together
+        if end_list[val] == number_to_replace:
+            end_list[val] = interpolate_list[i]
+            i = i + 1
+
+    return end_list
+
+
+def interpolate_values(z_scores):
+    return [interpolate_values_in_list(list(x), padding_interpolation=True) for x in z_scores]
+
+
+def split_data_into_windows(embeddings, z_scores, window_size):
+    x_new = []
+    y_new = []
+
+    for embedding, z_score in zip(embeddings, z_scores):
+        z_score_new = np.lib.stride_tricks.sliding_window_view(z_score, window_size)
+        embedding_new = np.lib.stride_tricks.sliding_window_view(embedding, window_size, 0)
+        for window in z_score_new:
+            # for the z-scores, we only want the middle one
+            y_new.append(window[int((window_size-1)/2)])
+        for window in embedding_new:
+            x_new.append(window)
+
+    return x_new, y_new
+
+
+# # this is just for testing purposes
+# if __name__ == "__main__":
+#     dataset = load_dataset(path="/home/matthias/Code/Python/pp1cb_ss21/data", window_size=16)
+#     hparams = {'hidden_size': 112,
+#                "learning_rate": 1e-4
+#                }
+#     nested_cross_validation(dataset, mode='evaluate', model=ConvNet(hparams=hparams))
+
