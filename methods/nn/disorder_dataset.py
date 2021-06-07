@@ -4,7 +4,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 import numpy as np
 
-from utils.read_embeddings import read_data
+from ..utils.read_embeddings import read_data
 from torch.nn.utils.rnn import pad_sequence
 
 # TO DO: setup.py

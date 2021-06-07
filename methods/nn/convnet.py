@@ -15,8 +15,11 @@ class ConvNet(pl.LightningModule):
         Warning: Don't change the  method declaration (i.e. by adding more
             arguments), otherwise it might not work on the submission server
         """
+
         super(ConvNet, self).__init__()
-        self.hparams = hparams
+        print(hparams)
+        self.hparams.update(hparams)
+
         ########################################################################
         # TODO: Define all the layers of your CNN, the only requirements are:  #
         # 1. The network takes in a batch of images of shape (Nx1x96x96)       #
@@ -110,8 +113,8 @@ class ConvNet(pl.LightningModule):
 
 if __name__ == "__main__":
     hparams = {'hidden_size': 112,
-               "learning_rate": 1e-4,
+               'learning_rate': 1e-4,
                'window_size': 15
                }
-    dataset = load_dataset(path="../../../pp1cb_ss21/data", window_size=hparams['window_size'])
+    dataset = load_dataset(path="..\\..\\..\\pp1cb_ss21\\data", window_size=hparams['window_size'])
     nested_cross_validation(dataset, mode='evaluate', model=ConvNet(hparams=hparams))

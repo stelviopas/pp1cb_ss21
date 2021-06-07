@@ -1,8 +1,9 @@
+import numpy as np
 import torch
 from torch import nn
 import pytorch_lightning as pl
-from disorder_dataset import load_dataset
-from nested_cross_validation import nested_cross_validation
+from methods.nn.disorder_dataset import load_dataset
+from methods.nn.nested_cross_validation import nested_cross_validation
 
 
 class FFNet(pl.LightningModule):
@@ -15,7 +16,7 @@ class FFNet(pl.LightningModule):
             arguments), otherwise it might not work on the submission server
         """
         super(FFNet, self).__init__()
-        self.hparams = hparams
+        self.hparams.update(hparams)
         ########################################################################
         # TODO: Define all the layers of your CNN, the only requirements are:  #
         # 1. The network takes in a batch of images of shape (Nx1x96x96)       #
@@ -62,6 +63,7 @@ class FFNet(pl.LightningModule):
     def general_step(self, batch, batch_idx, mode):
         # forward pass
         out = self.forward(batch['embeddings'])
+        out = out.flatten()
 
         # loss
         targets = batch['z_scores']
@@ -71,6 +73,7 @@ class FFNet(pl.LightningModule):
 
         loss = nn.MSELoss()
         loss = loss(out, targets)
+
 
         return loss
 
