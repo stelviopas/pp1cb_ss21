@@ -2,7 +2,7 @@ import torch
 from sklearn.model_selection import StratifiedKFold, train_test_split
 import numpy as np
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import EarlyStopping
 
 def nested_cross_validation(dataset,
                             model=None,
@@ -78,10 +78,9 @@ def nested_cross_validation(dataset,
             print()
 
         elif mode == 'evaluate':
-            logger = TensorBoardLogger('pp_logs', name = 'best_testing',default_hp_metric=False)
-
-
-            trainer = pl.Trainer(weights_summary=None, max_epochs=max_epochs, deterministic=True,logger= logger )
+            
+            early_stopping = EarlyStopping('val_loss')
+            trainer = pl.Trainer(weights_summary=None, max_epochs=max_epochs, deterministic=True,callbacks=[early_stopping])
             trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
         else:
             print("Mode is not specified!")
