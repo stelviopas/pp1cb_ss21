@@ -7,27 +7,15 @@ from methods.nn.nested_cross_validation import nested_cross_validation
 
 
 class FFNet(pl.LightningModule):
-    """Facial keypoint detection model"""
 
     def __init__(self, hparams):
         """
         Initialize your model from a given dict containing all your hparams
-        Warning: Don't change the  method declaration (i.e. by adding more
-            arguments), otherwise it might not work on the submission server
         """
         super(FFNet, self).__init__()
-        self.hparams.update(hparams)
+        self.hparams = hparams
         ########################################################################
-        # TODO: Define all the layers of your CNN, the only requirements are:  #
-        # 1. The network takes in a batch of images of shape (Nx1x96x96)       #
-        # 2. It ends with a linear layer that represents the keypoints.        #
-        # Thus, the output layer needs to have shape (Nx30),                   #
-        # with 2 values representing each of the 15 keypoint (x, y) pairs      #
-        #                                                                      #
-        # Some layers you might consider including:                            #
-        # maxpooling layers, multiple conv layers, fully-connected layers,     #
-        # and other layers (such as dropout or batch normalization) to avoid   #
-        # overfitting.                                                         #
+        # TODO: Define all the layers of your Feed Forward Network
         ########################################################################
 
         self.model = nn.Sequential(
