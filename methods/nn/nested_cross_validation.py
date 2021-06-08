@@ -4,6 +4,7 @@ import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 
+
 def nested_cross_validation(dataset,
                             model=None,
                             mode='print_fold_info',
@@ -78,10 +79,19 @@ def nested_cross_validation(dataset,
             print()
 
         elif mode == 'evaluate':
-            
-            early_stopping = EarlyStopping('val_loss')
-            trainer = pl.Trainer(weights_summary=None, max_epochs=max_epochs, deterministic=True,callbacks=[early_stopping])
-            trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
+
+          early_stopping = EarlyStopping('val_loss')
+
+          trainer = pl.Trainer(weights_summary=None,
+                                max_epochs=max_epochs,
+                                deterministic=True,
+                                callbacks=[early_stopping],
+                                auto_select_gpus=1
+                                #auto_lr_find=True, #TO DO
+                                #auto_scale_batch_size=True, # TO DO
+                                )
+          trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
+          
         else:
             print("Mode is not specified!")
             break
