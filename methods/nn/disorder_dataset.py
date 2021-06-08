@@ -79,13 +79,11 @@ class DisorderDataset(Dataset):
         return np.array(assigned_bins)
 
 
-def load_dataset(path=os.path.join(project_root, "data"), window_size=7):
-
-    z_score_path = 'baseline_embeddings_disorder.h5'
+def load_dataset(z_score_path,path=os.path.join(project_root, "data"), window_size=7):
 
     labels_path = 'disorder_labels.fasta'
 
-    x, y = read_data(os.path.join(path, z_score_path),
+    x, y = read_data(z_score_path,
                     os.path.join(path, labels_path))
 
     # adding a padding of size (window_size-1)/2 so that we can have a sliding window which also incorporates
