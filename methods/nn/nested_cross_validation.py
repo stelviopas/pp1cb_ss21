@@ -3,10 +3,11 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
+from methods.nn.ffnet import FFNet
 
 
 def nested_cross_validation(dataset,
-                            model=None,
+                            hparams,
                             mode='print_fold_info',
                             k=10, batch_size=128, max_epochs=100, *kwargs):
     # Set fixed random number seed
@@ -79,6 +80,8 @@ def nested_cross_validation(dataset,
             print()
 
         elif mode == 'evaluate':
+
+          model=FFNet(hparams=hparams)
 
           early_stopping = EarlyStopping('val_loss')
 
