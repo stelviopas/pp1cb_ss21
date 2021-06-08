@@ -86,6 +86,7 @@ def nested_cross_validation(dataset,
                                 max_epochs=max_epochs,
                                 deterministic=True,
                                 callbacks=[early_stopping],
+                                gpus=1,
                                 auto_select_gpus=1
                                 #auto_lr_find=True, #TO DO
                                 #auto_scale_batch_size=True, # TO DO
