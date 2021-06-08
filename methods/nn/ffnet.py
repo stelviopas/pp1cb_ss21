@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import pytorch_lightning as pl
 from methods.nn.disorder_dataset import load_dataset
-from methods.nn.nested_cross_validation import nested_cross_validation
+
 
 
 class FFNet(pl.LightningModule):
@@ -12,7 +12,7 @@ class FFNet(pl.LightningModule):
         """
         Initialize your model from a given dict containing all your hparams
         """
-        super(FFNet, self).__init__()
+        super().__init__()
         self.hparams = hparams
         ########################################################################
         # TODO: Define all the layers of your Feed Forward Network
