@@ -5,7 +5,6 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from methods.nn.ffnet import FFNet
 
-
 def nested_cross_validation(dataset,
                             hparams,
                             mode='print_fold_info',
@@ -95,6 +94,9 @@ def nested_cross_validation(dataset,
                                 #auto_scale_batch_size=True, # TO DO
                                 )
           trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
+          trainer.test(model, test_dataloaders=testloader)
+          test_loss = model.test_results
+          results[fold] = test_loss
           
         else:
             print("Mode is not specified!")
