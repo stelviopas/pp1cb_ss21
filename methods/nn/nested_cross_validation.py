@@ -1,108 +1,117 @@
-import torch
-from sklearn.model_selection import StratifiedKFold, train_test_split
 import numpy as np
+import torch
+from torch import nn
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
-from methods.nn.ffnet import FFNet
+from methods.nn.disorder_dataset import load_dataset
 
-def nested_cross_validation(dataset,
-                            hparams,
-                            mode='print_fold_info',
-                            k=10, batch_size=128, max_epochs=100, *kwargs):
-    # Set fixed random number seed
-    SEED = 1
-    torch.manual_seed(SEED)
 
-    # Define the K-fold Cross Validator
-    skf = StratifiedKFold(n_splits=k, random_state=SEED, shuffle=True)
 
-    # For folds results
-    results = {}
-    # For debugging loaders
-    loaders = {}
+class FFNet(pl.LightningModule):
 
-    # Nested K-Fold Cross Validation model evaluation
-    # We split the data stratified on artificially constructed bins in df['bins'
-    # and extract indices.
+    def __init__(self, hparams, *args, **kwargs):
+        """
+        Initialize your model from a given dict containing all your hparams
+        """
+        super().__init__()
+        self.hparams = hparams
+        self.hidden_size = hparams["hidden_size"]
+        self.learning_rate = hparams["learning_rate"]
+        self.window_size = hparams["window_size"]
+        self.batch_size = hparams["batch_size"]
+        self.test_results = 0.0
+        self.truth_prediction_test = []
 
-    # By splitting we only extract indices of samples for each test/train/val sets,
-    # thus we only need either X or y (equal length).
-    # For stratification, however, we require the artificially assigned bins which are also defined in the
-    # dataset class
+        ########################################################################
+        # TODO: Define all the layers of your Feed Forward Network
+        ########################################################################
 
-    data = dataset.y
-    stratify_on = dataset.bins
+        self.model = nn.Sequential(
+            # input: batch_size * 1024 * window_size
+            nn.Flatten(),
+            # here, we have 1024 * window_size
+            nn.Linear(1024 * self.window_size, self.hidden_size),
+            nn.PReLU(),
+            nn.Linear(self.hidden_size, 32),
+            nn.Sigmoid(),
+            nn.Linear(32, 1),
+        )
 
-    for fold, (train_val_ids, test_ids) in enumerate(skf.split(data, stratify_on)):
+        print(self.model)
 
-        print(f"Fold {fold}")
+        ########################################################################
+        #                           END OF YOUR CODE                           #
+        ########################################################################
 
-        train_ids, val_ids = train_test_split(train_val_ids,
-                                              test_size=0.20,  # 0.25 x 0.8 = 0.2
-                                              stratify=stratify_on[train_val_ids],
-                                              random_state=SEED)
+    def forward(self, x):
+        ########################################################################
+        # TODO: Define the forward pass behavior of your model                 #
+        # for an input image x, forward(x) should return the                   #
+        # corresponding predicted keypoints                                    #
+        ########################################################################
+        x = self.model(x)
 
-        # Define data loaders for training and testing data in this fold
-        valloader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=batch_size,
-            sampler=val_ids)
+        ########################################################################
+        #                           END OF YOUR CODE                           #
+        ########################################################################
+        return x
 
-        trainloader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=batch_size, sampler=train_ids)
+    def general_step(self, batch, batch_idx, mode):
+        # forward pass
+        out = self.forward(batch['embeddings'])
+        out = out.flatten()
 
-        testloader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=batch_size, sampler=test_ids)
+        # loss
+        targets = batch['z_scores']
 
-        if mode == 'print_fold_info':
+        # print(out.shape)
+        # print(targets.shape)
 
-            loaders[fold] = [trainloader, valloader, testloader]
+        loss = nn.MSELoss()
+        loss = loss(out, targets)
+        return loss
 
-            print('train -  {}, avg_len - {:.2f}  |  val -  {}, avg_len - {:.2f}'.format(
-                np.sum(np.bincount(stratify_on[train_ids])),
-                np.sum(dataset.aa_len[train_ids]) / len(train_ids),
-                np.sum(np.bincount(stratify_on[val_ids])),
-                np.sum(dataset.aa_len[val_ids]) / len(val_ids)))
+    def training_step(self, batch, batch_idx):
+        loss = self.general_step(batch, batch_idx, "train")
+        tensorboard_logs = {'train_loss': loss}
+        return {'loss': loss, 'log': tensorboard_logs}
 
-            print('test -  {}, avg_len - {:.2f}'.format(
-                np.sum(np.bincount(stratify_on[test_ids])),
-                np.sum(dataset.aa_len[test_ids]) / len(test_ids)))
+    def validation_step(self, batch, batch_idx):
+        loss = self.general_step(batch, batch_idx, "val")
+        tensorboard_logs = {'val_loss': loss}
+        return {'val_loss': loss, 'log': tensorboard_logs}
 
-            show_batches = 5
-            for i, batch in enumerate(trainloader):
-                print(f"Batch {i}:\n{batch}\n")
-                if i == show_batches:
-                    break
+    def test_step(self, batch, batch_idx):
+        loss = self.general_step(batch, batch_idx, "test")
+        tensorboard_logs = {'test_loss': loss}
 
-            print()
+        # Remember raw ground truth and raw predictions 
+        
+        out = self.forward(batch['embeddings'])
+        out = out.flatten()
 
-        elif mode == 'evaluate':
+        targets = batch['z_scores']
+        self.truth_prediction_test.append([out, targets])
+        
+        return {'test_loss': loss, 'log': tensorboard_logs}
 
-          model=FFNet(hparams=hparams)
 
-          early_stopping = EarlyStopping('val_loss')
+    def general_end(self, outputs, mode):
+        # average over all batches aggregated during one epoch
+        avg_loss = torch.stack([x[mode + '_loss'] for x in outputs]).mean()
+        return avg_loss
+    
+    def test_end(self, outputs):
+        avg_loss = self.general_end(outputs, "test")
+        tensorboard_logs = {'avg_test_loss': avg_loss}
+        self.test_results = avg_loss
+        return {'test_loss': avg_loss, 
+        'log': tensorboard_logs}
+    
+    def validation_end(self, outputs):
+        avg_loss = self.general_end(outputs, "val")
+        tensorboard_logs = {'val_loss': avg_loss}
+        return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
-          trainer = pl.Trainer(weights_summary=None,
-                                max_epochs=max_epochs,
-                                deterministic=True,
-                                callbacks=[early_stopping],
-                                gpus=1,
-                                auto_select_gpus=1
-                                #auto_lr_find=True, #TO DO
-                                #auto_scale_batch_size=True, # TO DO
-                                )
-          trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
-          trainer.test(model, test_dataloaders=testloader)
-          test_loss = model.test_results
-          results[fold] = test_loss
-          
-        else:
-            print("Mode is not specified!")
-            break
-
-    if mode == 'evaluate':
-        return results
-    else:
-        return loaders
+    def configure_optimizers(self):
+        optim = torch.optim.Adam(self.model.parameters(), self.hparams["learning_rate"])
+        return optim
