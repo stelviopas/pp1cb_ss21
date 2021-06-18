@@ -19,6 +19,7 @@ class FFNet(pl.LightningModule):
         self.window_size = hparams["window_size"]
         self.batch_size = hparams["batch_size"]
         self.test_results = 0.0
+        self.truth_prediction_test = []
 
         ########################################################################
         # TODO: Define all the layers of your Feed Forward Network
@@ -29,7 +30,7 @@ class FFNet(pl.LightningModule):
             nn.Flatten(),
             # here, we have 1024 * window_size
             nn.Linear(1024 * self.window_size, self.hidden_size),
-            nn.ReLU(),
+            nn.PReLU(),
             nn.Linear(self.hidden_size, 32),
             nn.Sigmoid(),
             nn.Linear(32, 1),
@@ -82,6 +83,15 @@ class FFNet(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         loss = self.general_step(batch, batch_idx, "test")
         tensorboard_logs = {'test_loss': loss}
+
+        # Remember raw ground truth and raw predictions 
+        
+        out = self.forward(batch['embeddings'])
+        out = out.flatten()
+
+        targets = batch['z_scores']
+        self.truth_prediction_test.append([out, targets])
+        
         return {'test_loss': loss, 'log': tensorboard_logs}
 
 
@@ -96,10 +106,10 @@ class FFNet(pl.LightningModule):
         self.test_results = avg_loss
         return {'test_loss': avg_loss, 
         'log': tensorboard_logs}
-
+    
     def validation_end(self, outputs):
         avg_loss = self.general_end(outputs, "val")
-        tensorboard_logs = {'avg_val_loss': avg_loss}
+        tensorboard_logs = {'val_loss': avg_loss}
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
     def configure_optimizers(self):
