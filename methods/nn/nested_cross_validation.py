@@ -218,7 +218,7 @@ def nested_cross_validation(dataset,
             fold_errors[fold] = test_loss
             test_prediction = model.truth_prediction_test
             fold_test_predictions[fold] = test_prediction
-            break
+            #break
 
         else:
             print("Skip!")
