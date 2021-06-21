@@ -28,8 +28,8 @@ class FFNet(pl.LightningModule):
             # input: batch_size * 1024 * window_size
             nn.Flatten(),
             # here, we have 1024 * window_size
-            nn.Linear(1024 * self.window_size, self.hidden_size),
-            nn.Linear(self.hidden_size, 32),
+            nn.Linear(1024 * self.window_size, 128),
+            nn.Linear(128, 32),
             nn.PReLU(),
             nn.Linear(32, 1),
             nn.Sigmoid(),
