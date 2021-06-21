@@ -29,10 +29,10 @@ class FFNet(pl.LightningModule):
             nn.Flatten(),
             # here, we have 1024 * window_size
             nn.Linear(1024 * self.window_size, self.hidden_size),
-            nn.PReLU(),
             nn.Linear(self.hidden_size, 32),
-            nn.Sigmoid(),
+            nn.PReLU(),
             nn.Linear(32, 1),
+            nn.Sigmoid(),
         )
 
         print(self.model)
