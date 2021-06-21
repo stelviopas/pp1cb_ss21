@@ -5,7 +5,6 @@ import pytorch_lightning as pl
 from methods.nn.disorder_dataset import load_dataset
 
 
-
 class FFNet(pl.LightningModule):
 
     def __init__(self, hparams, *args, **kwargs):
@@ -84,29 +83,28 @@ class FFNet(pl.LightningModule):
         loss = self.general_step(batch, batch_idx, "test")
         tensorboard_logs = {'test_loss': loss}
 
-        # Remember raw ground truth and raw predictions 
-        
+        # Remember raw ground truth and raw predictions
+
         out = self.forward(batch['embeddings'])
         out = out.flatten()
 
         targets = batch['z_scores']
         self.truth_prediction_test.append([out, targets])
-        
-        return {'test_loss': loss, 'log': tensorboard_logs}
 
+        return {'test_loss': loss, 'log': tensorboard_logs}
 
     def general_end(self, outputs, mode):
         # average over all batches aggregated during one epoch
         avg_loss = torch.stack([x[mode + '_loss'] for x in outputs]).mean()
         return avg_loss
-    
+
     def test_end(self, outputs):
         avg_loss = self.general_end(outputs, "test")
         tensorboard_logs = {'avg_test_loss': avg_loss}
         self.test_results = avg_loss
-        return {'test_loss': avg_loss, 
-        'log': tensorboard_logs}
-    
+        return {'test_loss': avg_loss,
+                'log': tensorboard_logs}
+
     def validation_end(self, outputs):
         avg_loss = self.general_end(outputs, "val")
         tensorboard_logs = {'val_loss': avg_loss}

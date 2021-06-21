@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from methods.nn.ffnet import FFNet
 
+
 def nested_cross_validation(dataset,
                             hparams,
                             mode='print_fold_info',
@@ -83,34 +84,35 @@ def nested_cross_validation(dataset,
 
         elif mode == 'evaluate':
 
-          model=FFNet(hparams=hparams)
+            model = FFNet(hparams=hparams)
 
-          early_stopping = EarlyStopping('val_loss')
+            early_stopping = EarlyStopping('val_loss')
 
-          trainer = pl.Trainer(weights_summary=None,
-                                max_epochs=max_epochs,
-                                deterministic=True,
-                                callbacks=[early_stopping],
-                                gpus=1,
-                                auto_select_gpus=1
-                                #auto_lr_find=True, #TO DO
-                                #auto_scale_batch_size=True, # TO DO
-                                )
-          trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
-          trainer.test(model, test_dataloaders=testloader)
-          test_loss = model.test_results
-          fold_errors[fold] = test_loss
-          test_prediction = model.truth_prediction_test
-          fold_test_predictions[fold] = test_prediction
-          
+            trainer = pl.Trainer(weights_summary=None,
+                                 max_epochs=max_epochs,
+                                 deterministic=True,
+                                 callbacks=[early_stopping],
+                                 gpus=1,
+                                 auto_select_gpus=1
+                                 # auto_lr_find=True, #TO DO
+                                 # auto_scale_batch_size=True, # TO DO
+                                 )
+            trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
+            trainer.test(model, test_dataloaders=testloader)
+            test_loss = model.test_results
+            fold_errors[fold] = test_loss
+            test_prediction = model.truth_prediction_test
+            fold_test_predictions[fold] = test_prediction
+
         else:
             print("Skip!")
-            
 
     if mode == 'evaluate':
         return fold_errors, fold_test_predictions
     else:
         return loaders
+
+
 import torch
 from sklearn.model_selection import StratifiedKFold, train_test_split
 import numpy as np
@@ -118,6 +120,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from methods.nn.ffnet import FFNet
 
+
 def nested_cross_validation(dataset,
                             hparams,
                             mode='print_fold_info',
@@ -196,30 +199,29 @@ def nested_cross_validation(dataset,
 
         elif mode == 'evaluate':
 
-          model=FFNet(hparams=hparams)
+            model = FFNet(hparams=hparams)
 
-          early_stopping = EarlyStopping('val_loss')
+            early_stopping = EarlyStopping('val_loss')
 
-          trainer = pl.Trainer(weights_summary=None,
-                                max_epochs=max_epochs,
-                                deterministic=True,
-                                callbacks=[early_stopping],
-                                gpus=1,
-                                auto_select_gpus=1
-                                #auto_lr_find=True, #TO DO
-                                #auto_scale_batch_size=True, # TO DO
-                                )
-          trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
-          trainer.test(model, test_dataloaders=testloader)
-          test_loss = model.test_results
-          fold_errors[fold] = test_loss
-          test_prediction = model.truth_prediction_test
-          fold_test_predictions[fold] = test_prediction
-          break
-          
+            trainer = pl.Trainer(weights_summary=None,
+                                 max_epochs=max_epochs,
+                                 deterministic=True,
+                                 callbacks=[early_stopping],
+                                 gpus=1,
+                                 auto_select_gpus=1
+                                 # auto_lr_find=True, #TO DO
+                                 # auto_scale_batch_size=True, # TO DO
+                                 )
+            trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
+            trainer.test(model, test_dataloaders=testloader)
+            test_loss = model.test_results
+            fold_errors[fold] = test_loss
+            test_prediction = model.truth_prediction_test
+            fold_test_predictions[fold] = test_prediction
+            break
+
         else:
             print("Skip!")
-            
 
     if mode == 'evaluate':
         return fold_errors, fold_test_predictions
