@@ -5,34 +5,7 @@ import os
 from collections import Iterable
 import math
 
-
-# Function to find sample mean.
-def mean(arr, n):
-    # loop to calculate
-    # sum of array elements.
-    sm = 0
-    for i in range(0, n):
-        sm = sm + arr[i]
-
-    return sm / n
-
-
-# Function to calculate sample
-# standard deviation.
-def SSD(arr, n):
-    sm = 0
-    for i in range(0, n):
-        sm = sm + (arr[i] - mean(arr, n)) * (arr[i] - mean(arr, n))
-
-    return (math.sqrt(sm / (n - 1)))
-
-
-# Function to calculate sample error.
-def sampleError(arr, n):
-    # Formula to find sample error.
-    return SSD(arr, n) / (math.sqrt(n))
-
-
+# function to let multi dementional list to 1
 def flatten(lis):
     for item in lis:
         if isinstance(item, Iterable) and not isinstance(item, str):
@@ -40,10 +13,6 @@ def flatten(lis):
                 yield x
         else:
             yield item
-
-
-train_data = os.listdir('D:\\Study thingie\\FACH\\S4 WS2021\\PP\\uebung\\model_data\\trainlos')
-val_data = os.listdir('D:\\Study thingie\\FACH\\S4 WS2021\\PP\\uebung\\model_data\\vallos')
 
 def visual_perform(data_path, type):
     list1_num = 0
@@ -104,14 +73,9 @@ def visual_perform(data_path, type):
         for j in range(len(step1)):
             All_step.append(step1[j])
 
-    print(All_step)
     #create dataframe
     data1 = {'Type': MSA1,'Step': All_step, 'Mean': MSA1_sum}
-    print(len(MSA1))
-    #print(len(ALL_step))
-    print(len(MSA1_sum))
     df1 = pd.DataFrame(data1)
-    print()
     data2 = {'Type': MSA2,'Step': All_step, 'Mean': MSA2_sum}
     df2 = pd.DataFrame(data2)
     data3 = {'Type': MSA3,'Step': All_step, 'Mean': MSA3_sum}
@@ -119,11 +83,9 @@ def visual_perform(data_path, type):
     datab = {'Type': MSA_base,'Step': All_step, 'Mean': MSAb_sum}
     dfb = pd.DataFrame(datab)
     #merge df
-    frames = [dfb,df1, df2, df3] #TODO add dfb
+    frames = [dfb,df1, df2, df3] 
     merged_vallos = pd.concat(frames)
-    #print(merged_vallos)
-    #print(len(MSA1_all[1])result.set(yscale='log')
-    #print(step1)
+
     sns.set_theme(style="whitegrid")
 
     result = sns.lineplot(data = merged_vallos,x = 'Step', y = 'Mean',hue="Type",ci = 'sd')
@@ -137,13 +99,10 @@ def visual_perform(data_path, type):
         plt.savefig("plots/trainloss.png", dpi=300)
 
     plt.show()
-    #cal mean for every step
-    #filename = MSA1_all
-    #for n in range(len(filename)):
 
+
+train_data = os.listdir('D:\\Study thingie\\FACH\\S4 WS2021\\PP\\uebung\\model_data\\trainlos')
+val_data = os.listdir('D:\\Study thingie\\FACH\\S4 WS2021\\PP\\uebung\\model_data\\vallos')
 
 visual_perform(val_data,'val')
 visual_perform(train_data,'train')
-
-#sns.lineplot(x=df['Step'],y= df['Value'])
-#plt.show()
