@@ -12,13 +12,17 @@ class FFNet(pl.LightningModule):
         Initialize your model from a given dict containing all your hparams
         """
         super().__init__()
-        self.hparams = hparams
+        self.hparams.update(hparams)
         self.hidden_size = hparams["hidden_size"]
         self.learning_rate = hparams["learning_rate"]
         self.window_size = hparams["window_size"]
         self.batch_size = hparams["batch_size"]
+
+        # work arounds for reporting results
         self.test_results = 0.0
         self.truth_prediction_test = []
+        self.prediction = []
+        self.exp = []
 
         ########################################################################
         # TODO: Define all the layers of your Feed Forward Network
@@ -90,7 +94,10 @@ class FFNet(pl.LightningModule):
         out = out.flatten()
 
         targets = batch['z_scores']
+
         self.truth_prediction_test.append([out, targets])
+        self.prediction.append(out)
+        self.exp.append(targets)
 
         return {'test_loss': loss, 'log': tensorboard_logs}
 
@@ -99,14 +106,16 @@ class FFNet(pl.LightningModule):
         avg_loss = torch.stack([x[mode + '_loss'] for x in outputs]).mean()
         return avg_loss
 
-    def test_end(self, outputs):
+    def test_epoch_end(self, outputs):
         avg_loss = self.general_end(outputs, "test")
         tensorboard_logs = {'avg_test_loss': avg_loss}
+
         self.test_results = avg_loss
+
         return {'test_loss': avg_loss,
                 'log': tensorboard_logs}
 
-    def validation_end(self, outputs):
+    def validation_epoch_end(self, outputs):
         avg_loss = self.general_end(outputs, "val")
         tensorboard_logs = {'val_loss': avg_loss}
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
